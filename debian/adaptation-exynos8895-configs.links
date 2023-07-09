@@ -1,0 +1,2 @@
+/usr/lib/adaptation-droidian-exynos8895/sources.list.d/exynos8895.list /etc/apt/sources.list.d/exynos8895.list
+/dev/null /etc/systemd/system/systemd-resolved.service

@@ -1,0 +1,5 @@
+/etc/udev/rules.d
+/usr/lib/
+/usr/bin/
+/usr/share/keyrings/
+/var/lib/bluetooth

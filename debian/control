@@ -1,0 +1,21 @@
+Source: adaptation-droidian-exynos8895
+Maintainer: Bardia Moshiri
+Section: metapackages
+Priority: optional
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.5.0.3
+Vcs-Browser: https://github.com/droidian-exynos8895/adaptation-droidian-exynos8895
+Vcs-Git: https://github.com/droidian-exynos8895/adaptation-droidian-exynos8895.git
+
+Package: adaptation-droidian-exynos8895
+Architecture: all
+Depends: ${misc:Depends},
+         adaptation-hybris-api28-phone,
+         adaptation-exynos8895-configs,
+Description: adapatation-exynos8895-meta
+ exynos8895 api28 adaptation metapackage
+
+Package: adaptation-exynos8895-configs
+Architecture: all
+Depends: ${misc:Depends},
+Description: exynos8895's adaptation configs

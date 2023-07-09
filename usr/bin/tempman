@@ -1,0 +1,101 @@
+#!/bin/bash
+
+CORE_FIRST=$(awk '$1 == "processor" {print $3; exit}' /proc/cpuinfo)
+CORE_LAST=$(awk '$1 == "processor" {print $3}' /proc/cpuinfo | tail -1)
+GOVERNOR="userspace"
+TEMPFILE="/sys/class/thermal/thermal_zone0/temp"
+UIDS=$(ls /run/user | head -1)
+GET_SCREEN="batman-helper wlrdisplay"
+FIRSTPOL=$(basename $(find /sys/devices/system/cpu/cpufreq -maxdepth 1 -type d | grep policy | tail -n 1))
+FIRSTPOLCORE=$(cut -c1 - < /sys/devices/system/cpu/cpufreq/$FIRSTPOL/related_cpus)
+LASTPOLCORE=$(awk '{for(i=NF;i>=1;i--) printf("%s ", $i)}' /sys/devices/system/cpu/cpufreq/$FIRSTPOL/related_cpus | cut -c1 -)
+OFFLINED="false"
+
+function set_min_freq() {
+    for ((i=$CORE_FIRST; i<=$CORE_LAST; i++))
+    do
+        echo "$GOVERNOR" > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor
+        MINFREQ=$(</sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq)
+        echo $MINFREQ > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_setspeed
+    done
+
+    echo "new clock $MINFREQ"
+}
+
+function set_max_freq() {
+    for ((i=$CORE_FIRST; i<=$CORE_LAST; i++))
+    do
+        echo "$GOVERNOR" > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor
+        MAXFREQ=$(</sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq)
+        echo $MAXFREQ > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_setspeed
+    done
+
+    echo "new clock $MAXFREQ"
+}
+
+function set_mid_freq() {
+    for ((i=$CORE_FIRST; i<=$CORE_LAST; i++))
+    do
+        echo "$GOVERNOR" > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor
+        VALUECOUNT=$(cat /sys/devices/system/cpu/cpu$i/cpufreq/scaling_available_frequencies | sed 's/ /\n/g' | head -n -1 | wc -l)
+        VALUEHALF=$(($VALUECOUNT/2))
+        MIDFREQ=$(cat /sys/devices/system/cpu/cpu$i/cpufreq/scaling_available_frequencies | sed 's/ /\n/g' | head -n -1 | sed -n "${VALUEHALF}p")
+        echo $MIDFREQ > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_setspeed
+    done
+
+    echo "new clock $MIDFREQ"
+}
+
+function offline() {
+    for ((i=$FIRSTPOLCORE; i<=$LASTPOLCORE; i++))
+    do
+         echo "0" > /sys/devices/system/cpu/cpu$i/online
+    done
+}
+
+function online() {
+    for ((i=$FIRSTPOLCORE; i<=$LASTPOLCORE; i++))
+    do
+         echo "1" > /sys/devices/system/cpu/cpu$i/online
+    done
+}
+
+echo 0 > /sys/power/cpuhotplug/enabled
+online
+sleep 5
+echo "starting"
+
+while true
+do
+    TEMP=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
+
+    SCREEN=$(eval "$GET_SCREEN")
+    if [ "$SCREEN" == "yes" ]; then
+        if [ "$OFFLINED" == "true" ]; then
+           online
+           echo "back online"
+           OFFLINED=false
+        fi
+
+        if [ "$TEMP" -le "40" ]; then
+            set_max_freq
+            echo "current temp $TEMP"
+            sleep 5
+        elif [ "$TEMP" -ge "70" ]; then
+            set_min_freq
+            echo "current temp $TEMP"
+            sleep 10
+        else
+            set_mid_freq
+            echo "current temp $TEMP"
+            sleep 5
+        fi
+    else
+        if [ "$OFFLINED" == false ]; then
+            set_min_freq
+            offline
+            echo "going offline"
+            OFFLINED=true
+        fi
+    fi
+done

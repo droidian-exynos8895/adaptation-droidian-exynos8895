@@ -1,0 +1,1 @@
+deb [arch=arm64 signed-by=/usr/share/keyrings/exynos8895.gpg] http://mirror.bardia.tech/exynos8895 bookworm main
